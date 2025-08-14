@@ -18,20 +18,36 @@ if not GOOGLE_API_KEY:
     raise ValueError("GOOGLE_API_KEY not found in environment variables.")
 
 class State(TypedDict):
+    route: str
     context: List[Document]
     question: str
     answer: str
+    history: str
 
+
+llm_router_prompt = PromptTemplate(
+    input_variables=["question", "history"],
+    template="""
+        You are having a conversation. Here are the last 3 messages of history: {history}
+
+        Decide if you can answer the user's latest message using only the conversation history or your general knowledge.
+        - If the answer requires the external document, respond with exactly one word: "RAG".
+        - If you can answer from history or your own knowledge, provide the answer directly.
+
+        Question: {question}
+
+        Response:
+    """
+)
 
 rag_prompt = PromptTemplate(
-    input_variables=["question", "context"],
+    input_variables=["question", "context", "history"],
     template="""
-        If the question is a greeting (e.g., "hi", "hello", "hey", "good morning", etc.), respond only with a friendly greeting and ask how you may help — ignore the context.
+        You are having a conversation. Here are the last 3 messages of history: {history}
 
-        Otherwise, use the following pieces of context to answer the question at the end:
+        Use the following pieces of context to answer the question at the end:
         - If you don't know the answer, just say that you don't know, don't try to make up an answer.
         - Use three sentences maximum and keep the answer as concise as possible.
-        - Always say "thanks for asking!" at the end of the answer.
 
         {context}
 
@@ -41,6 +57,9 @@ rag_prompt = PromptTemplate(
     """
 )
 
+def format_history(history: str) -> str:
+    messages = history.strip().split("\n")
+    return "\n".join(messages[-3:])
 
 def build_pdf_rag_graph(pdf_path: str):
     try:
@@ -61,29 +80,50 @@ def build_pdf_rag_graph(pdf_path: str):
     vector_store = InMemoryVectorStore(embeddings)
     _ = vector_store.add_documents(all_splits)
 
-    def retrieve(state: State):
-        retrieved_docs = vector_store.similarity_search(state["question"])
-        return {"context": retrieved_docs}
+    def llm_router_node(state: State):
+        message = llm_router_prompt.invoke({
+            "question": state["question"],
+            "history": format_history(state["history"])
+        })
+        router_response = model.invoke(message)
 
-    def generate(state: State):
-        docs_context_content = "\n\n".join(doc.page_content for doc in state["context"])
-        messages = rag_prompt.invoke({ "question": state["question"], "context": docs_context_content })
+        if router_response.content.strip().lower() == "rag":
+            state["route"] = "rag"
+        else:
+            state["route"] = "direct"
+
+        if state["route"] == "direct":
+            state["answer"] = router_response.content
+
+        return state
+
+    def rag_node(state: State):
+        retrieved_docs = vector_store.similarity_search(state["question"])
+        docs_context_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
+
+        messages = rag_prompt.invoke({
+            "question": state["question"],
+            "context": docs_context_content,
+            "history": format_history(state["history"])
+        })
+        
         response = model.invoke(messages)
-        return {"answer": response.content}
+        state["answer"] = response.content
+        return state
         
     graph_builder = StateGraph(State)
-    graph_builder.add_node("retrieve", retrieve)
-    graph_builder.add_node("generate", generate)
+    graph_builder.add_node("llm_router", llm_router_node)
+    graph_builder.add_node("rag", rag_node)
 
-    graph_builder.add_edge(START, "retrieve")
-    graph_builder.add_edge("retrieve", "generate")
-    graph_builder.add_edge("generate", END)
+    graph_builder.add_edge(START, "llm_router")
+    graph_builder.add_conditional_edges(
+        "llm_router",
+        lambda s: s["route"],
+        {
+            "rag": "rag",
+            "direct": END
+        }
+    )
+    graph_builder.add_edge("rag", END)
 
     return graph_builder.compile()
-
-
-# For CLI
-# graph = build_pdf_rag_graph("invoice_1.pdf")
-# user_input = input("How may I help you? \n")
-# state = graph.invoke({ "question": user_input })
-# print(state["answer"])

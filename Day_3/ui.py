@@ -35,8 +35,14 @@ if user_input and "pdf_path" in st.session_state:
         st.text(user_input)
 
     with st.spinner("Thinking..."):
+        if len(st.session_state['message_history']) > 1:
+            history_messages = st.session_state['message_history'][-3:]
+            history_text = "\n".join([f"{m['role']}: {m['content']}" for m in history_messages])
+        else:
+            history_text = ""
+            
         graph = build_pdf_rag_graph(st.session_state["pdf_path"])
-        state = graph.invoke({ "question": user_input })
+        state = graph.invoke({ "question": user_input, "history": history_text })
 
     st.session_state['message_history'].append({'role': 'assistant', 'content': state["answer"]})
     with st.chat_message('assistant'):
