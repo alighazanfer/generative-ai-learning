@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain_core.documents import Document
 from typing_extensions import List, TypedDict
+from langchain_openai import OpenAIEmbeddings
 from langchain.chat_models import init_chat_model
 from langgraph.graph import START, END, StateGraph
 from langchain_core.vectorstores import InMemoryVectorStore
@@ -11,11 +12,16 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
     raise ValueError("GOOGLE_API_KEY not found in environment variables.")
+
+# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# if not OPENAI_API_KEY:
+#     raise ValueError("OPENAI_API_KEY not found in environment variables.")
 
 class State(TypedDict):
     route: str
@@ -70,6 +76,8 @@ def build_pdf_rag_graph(pdf_path: str):
 
     model = init_chat_model("gemini-2.5-flash", model_provider="google_genai")
     embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+    # model = init_chat_model("gpt-4o-mini", model_provider="openai")
+    # embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
     loader = PyPDFLoader(pdf_path)
     docs = loader.load()
