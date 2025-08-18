@@ -1,5 +1,4 @@
 from models import model
-from langgraph.graph import END
 from schemas import GlobalState
 from models import embedding_model
 from langgraph.types import interrupt, Command
@@ -16,7 +15,6 @@ def llm_router_node(state: GlobalState):
     if router_decision.status == "CASUAL":
         state.casual_answer = router_decision.answer
 
-    print("Router decision:")
     return state
 
 
