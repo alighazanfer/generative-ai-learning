@@ -8,3 +8,5 @@ langchain-google-genai>=0.0.12
 langchain-text-splitters>=0.2.2
 typing-extensions>=4.12.2
 pypdf>=4.2.0
+streamlit>=1.37.0
+nest-asyncio>=1.5.8

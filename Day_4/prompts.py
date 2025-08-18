@@ -1,5 +1,6 @@
 from langchain.prompts import PromptTemplate
 
+
 llm_router_prompt = PromptTemplate(
     input_variables=["query"],
     template="""
@@ -7,38 +8,22 @@ llm_router_prompt = PromptTemplate(
 
         Task:
         - Decide whether the user's message requires vacation planning or is a casual reply.
-        - Always return output as valid JSON with exactly two keys:
-          1. "status" → either "PLANNING" or "CASUAL"
-          2. "answer" → 
-               * If status is "CASUAL", include a natural, polite reply.
-               * If status is "PLANNING", set this field to null.
 
         Rules:
         1. If the user explicitly talks about a vacation/trip/travel/holiday/itinerary/flights/budget:
-            - If the message contains BOTH a city and number of days → status: "PLANNING"
-            - If the message contains ONLY a city but no number of days → status: "CASUAL", ask politely how many days they want to stay
-            - If the message contains ONLY number of days but no city → status: "CASUAL", ask which city they want to visit
-            - If the message mentions vacation but provides NEITHER city nor days → status: "CASUAL", politely confirm you can help and ask for both
-        2. If the message is unrelated to vacations → status: "CASUAL", respond naturally and respectfully
+            - If the message contains BOTH a destination and number of days → status: "PLANNING", answer=null
+            - If the message contains ONLY a destination but no number of days → status: "CASUAL", answer=ask how many days they want to stay
+            - If the message contains ONLY number of days but no destination → status: "CASUAL", answer=ask which place they want to visit
+            - If the message mentions vacation but provides NEITHER destination nor days → status: "CASUAL", answer=politely confirm and ask for both
+        2. If the message is unrelated to vacations → status: "CASUAL", answer=natural response
 
-        Output format example (strict JSON):
-        {{
-          "status": "PLANNING",
-          "answer": null
-        }}
-
-        OR
-
-        {{
-          "status": "CASUAL",
-          "answer": "I can help with your trip! Which city would you like to visit?"
-        }}
-
-        User Message: {query}
+        User Query:
+        {query}
     """
 )
 
-city_info_prompt = PromptTemplate(
+
+designation_info_prompt = PromptTemplate(
     input_variables=["query", "context"],
     template="""
         You are a vacation assistant. Use ONLY the provided travel brochure context.
@@ -51,52 +36,68 @@ city_info_prompt = PromptTemplate(
         {query}
 
         Rules:
-        - If only the mentioned designation is NOT in the context, return all keys with null values and "found": false
-        - If the designation is found, return all keys with available info (missing info = null).
-        - "highlights" should be an array of strings if present, otherwise null.
-
-        Output format (strict JSON):
-        {{
-          "found": <true|false>,
-          "designation_name": <string or null>,
-          "summary": {{
-            "package_duration": <string or null>,
-            "price": <string or null>,
-            "hotel": <string or null>,
-            "meals": <string or null>,
-            "highlights": <array of strings or null>,
-            "transport": <string or null>
-          }}
-        }}
+        - If the mentioned destination is NOT in the context, return all keys with null values and "found": false.
+        - If the destination is found, return all keys with available info (missing info = null).
+        - "highlights" must be an array of strings if present, otherwise null.
+        - No additional text, no markdown, no explanations.
     """
 )
 
+
 budget_planner_prompt = PromptTemplate(
-    input_variables=["designation_info", "flight_info", "weather_info", "query"],
+    input_variables=["designation_info", "flight_info", "query"],
     template="""
-        You are a vacation assistant and budget planner.
+        You are a vacation budget planner.
 
         Task:
-        - Estimate a total vacation budget for the user based on the following information:
-          1. Trip details (designation_info)
-          2. Flight information (flight_info)
-          3. Weather conditions (weather_info)
-          4. Number of days the user wants to travel (get from "query")
-        - Consider factors like accommodation, meals, transport, flights, and other relevant costs.
-        
-        Important:
-        - Return ONLY valid JSON.
-        - Do NOT include markdown, backticks, or any extra text.
-        - Use the following JSON format strictly:
-          {{
-            "estimated_budget": "<total cost in USD or relevant currency>",
-            "currency": "USD",
-          }}
+        - Calculate an estimated total budget using ONLY the provided details:
+          1. Number of days (from the user's query).
+          2. Trip details (designation_info).
+          3. Flight price (flight_info).
+        - Break down the cost into flights, accommodation, meals, and other relevant costs explicitly mentioned in the trip details.
+        - If the package price already includes meals or hotels, DO NOT add them again. Instead, adjust calculations accordingly.
+        - If any cost information is missing, state the assumption (e.g., "assuming $50/day for meals").
+        - DO NOT mention packages or deals unless explicitly provided in the trip details.
+        - End the response casually with the final budget and ask: "Would you like to proceed?"
+
+        Example style of response:
+        "For a 7-day trip to Karachi, including flights, meals, hotel, and transport, the estimated budget comes out to around $2,350. Would you like to proceed?"
 
         User Query:
         {query}
-        
+
         Trip Details:
+        {designation_info}
+
+        Flight Info:
+        {flight_info}
+    """
+)
+
+
+itinerary_prompt = PromptTemplate(
+    input_variables=["designation_info", "flight_info", "weather_info", "budget_info", "query"],
+    template="""
+        You are a professional travel planner.
+
+        Task:
+        - Using the given destination information, flight details, weather forecast, and budget estimate,
+          create a detailed travel itinerary.
+        - The itinerary should be day-wise (Day 1, Day 2, etc.).
+        - Include:
+            • Flight timings (if available)  
+            • Accommodation suggestions  
+            • Meals (breakfast, lunch, dinner)  
+            • Activities/highlights for each day  
+            • Weather context (help users plan clothing and activities accordingly)  
+        - Ensure the plan matches the number of days mentioned in the user's query.
+        - Write in a friendly, conversational tone.
+        - Avoid repeating the exact budget. Instead, focus on schedule and experience.
+
+        User Query:
+        {query}
+
+        Destination Info:
         {designation_info}
 
         Flight Info:
@@ -104,5 +105,8 @@ budget_planner_prompt = PromptTemplate(
 
         Weather Info:
         {weather_info}
+
+        Budget Info:
+        {budget_info}
     """
 )
