@@ -10,8 +10,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 def llm_router_node(state: GlobalState):
-    router_decision = LLM_ROUTER_CHAIN.invoke({ "query": state.query })
+    state.casual_answer = None 
 
+    router_decision = LLM_ROUTER_CHAIN.invoke({ "query": state.query })
     if router_decision.status == "CASUAL":
         state.casual_answer = router_decision.answer
 
