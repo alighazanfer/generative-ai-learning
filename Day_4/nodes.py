@@ -1,5 +1,5 @@
-from langgraph.graph import END
 from models import model
+from langgraph.graph import END
 from schemas import GlobalState
 from models import embedding_model
 from langgraph.types import interrupt, Command
@@ -12,16 +12,15 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 def llm_router_node(state: GlobalState):
     router_decision = LLM_ROUTER_CHAIN.invoke({ "query": state.query })
-    print("router_decision", router_decision)
 
     if router_decision.status == "CASUAL":
         state.casual_answer = router_decision.answer
 
+    print("Router decision:")
     return state
 
 
-def city_info_node(state: GlobalState):
-    print("city_info_node")
+def destination_info_node(state: GlobalState):
     loader = PyPDFLoader("worldwide-travel-guide.pdf")
     docs = loader.load()
 
@@ -66,21 +65,12 @@ def budget_planner_node(state: GlobalState):
     response = model.invoke(messages)
     state.budget_info = response.content
 
-    is_approved = interrupt(
-        {
-            "question": "Do you want to proceed with this budget plan?",
-            "budget_output": state.budget_info,
-            "flight_info": state.flight_info,
-            "designation_info": state.designation_info,
-            "weather_info": state.weather_info,
-            "query": state.query
-        }
-    )
-
-    if is_approved:
+    decision = interrupt({ "budget_info": state.budget_info })
+    if decision == "proceed":
         return Command(goto="itinerary_node")
     else:
-        return Command(goto="budget_planner_node")
+        state.casual_answer = "Okay, I won’t proceed."
+        return state
 
 
 def itinerary_node(state: GlobalState):

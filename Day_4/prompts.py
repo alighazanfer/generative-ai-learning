@@ -58,10 +58,11 @@ budget_planner_prompt = PromptTemplate(
         - If the package price already includes meals or hotels, DO NOT add them again. Instead, adjust calculations accordingly.
         - If any cost information is missing, state the assumption (e.g., "assuming $50/day for meals").
         - DO NOT mention packages or deals unless explicitly provided in the trip details.
-        - End the response casually with the final budget and ask: "Would you like to proceed?"
+        - End the response casually with the final budget and say:  
+          "Would you like to proceed? If yes, please reply with 'proceed' and I will generate a detailed itinerary for you."
 
         Example style of response:
-        "For a 7-day trip to Karachi, including flights, meals, hotel, and transport, the estimated budget comes out to around $2,350. Would you like to proceed?"
+        "For a 7-day trip to Karachi, including flights, meals, hotel, and transport, the estimated budget comes out to around $2,350. Would you like to proceed? If yes, reply with 'proceed' and I'll create your detailed itinerary."
 
         User Query:
         {query}
