@@ -9,10 +9,19 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
+def format_history(history: str) -> str:
+    messages = history.strip().split("\n")
+    return "\n".join(messages[-3:])
+
+
 def llm_router_node(state: GlobalState):
     state.casual_answer = None 
 
-    router_decision = LLM_ROUTER_CHAIN.invoke({ "query": state.query })
+    router_decision = LLM_ROUTER_CHAIN.invoke({
+        "query": state.query,
+        "history": format_history(state.history)
+    })
+
     if router_decision.status == "CASUAL":
         state.casual_answer = router_decision.answer
 
@@ -35,6 +44,7 @@ def destination_info_node(state: GlobalState):
     designation_info = DESIGNATION_INFO_CHAIN.invoke({
         "query": state.query,
         "context": docs_context_content,
+        "history": format_history(state.history)
     })
 
     state.designation_info = designation_info
@@ -58,14 +68,16 @@ def budget_planner_node(state: GlobalState):
     messages = budget_planner_prompt.invoke({
         "designation_info": state.designation_info,
         "flight_info": state.flight_info,
-        "query": state.query
+        "query": state.query,
+        "history": format_history(state.history)
     })
 
     response = model.invoke(messages)
     state.budget_info = response.content
 
-    decision = interrupt({ "budget_info": state.budget_info })
-    if decision == "proceed":
+    response = interrupt({ "budget_info": state.budget_info })
+    user_feedback = response.get("user_feedback", "").strip().lower()
+    if user_feedback == "proceed":
         return Command(goto="itinerary_node")
     else:
         state.casual_answer = "Okay, I won’t proceed."
@@ -78,7 +90,8 @@ def itinerary_node(state: GlobalState):
         "weather_info": state.weather_info,
         "flight_info": state.flight_info,
         "budget_info": state.budget_info,
-        "query": state.query
+        "query": state.query,
+        "history": format_history(state.history)
     })
 
     response = model.invoke(messages)

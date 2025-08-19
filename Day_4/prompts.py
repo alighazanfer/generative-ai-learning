@@ -2,12 +2,12 @@ from langchain.prompts import PromptTemplate
 
 
 llm_router_prompt = PromptTemplate(
-    input_variables=["query"],
+    input_variables=["query", "history"],
     template="""
         You are a routing assistant.
 
         Task:
-        - Decide whether the user's message requires vacation planning or is a casual reply.
+        - Decide whether the, user's message requires vacation planning or is a casual reply.
 
         Rules:
         1. If the user explicitly talks about a vacation/trip/travel/holiday/itinerary/flights/budget:
@@ -17,6 +17,9 @@ llm_router_prompt = PromptTemplate(
             - If the message mentions vacation but provides NEITHER destination nor days → status: "CASUAL", answer=politely confirm and ask for both
         2. If the message is unrelated to vacations → status: "CASUAL", answer=natural response
 
+        Conversation History (last 3 messages):
+        {history}
+
         User Query:
         {query}
     """
@@ -24,13 +27,16 @@ llm_router_prompt = PromptTemplate(
 
 
 designation_info_prompt = PromptTemplate(
-    input_variables=["query", "context"],
+    input_variables=["query", "context", "history"],
     template="""
         You are a vacation assistant. Use ONLY the provided travel brochure context.
         Return output as valid JSON and nothing else.
 
         Context:
         {context}
+
+        Conversation History (last 3 messages):
+        {history}
 
         User Query:
         {query}
@@ -45,7 +51,7 @@ designation_info_prompt = PromptTemplate(
 
 
 budget_planner_prompt = PromptTemplate(
-    input_variables=["designation_info", "flight_info", "query"],
+    input_variables=["designation_info", "flight_info", "query", "history"],
     template="""
         You are a vacation budget planner.
 
@@ -64,6 +70,9 @@ budget_planner_prompt = PromptTemplate(
         Example style of response:
         "For a 7-day trip to Karachi, including flights, meals, hotel, and transport, the estimated budget comes out to around $2,350. Would you like to proceed? If yes, reply with 'proceed' and I'll create your detailed itinerary."
 
+        Conversation History (last 3 messages):
+        {history}
+
         User Query:
         {query}
 
@@ -77,7 +86,7 @@ budget_planner_prompt = PromptTemplate(
 
 
 itinerary_prompt = PromptTemplate(
-    input_variables=["designation_info", "flight_info", "weather_info", "budget_info", "query"],
+    input_variables=["designation_info", "flight_info", "weather_info", "budget_info", "query", "history"],
     template="""
         You are a professional travel planner.
 
@@ -94,6 +103,9 @@ itinerary_prompt = PromptTemplate(
         - Ensure the plan matches the number of days mentioned in the user's query.
         - Write in a friendly, conversational tone.
         - Avoid repeating the exact budget. Instead, focus on schedule and experience.
+
+        Conversation History (last 3 messages):
+        {history}
 
         User Query:
         {query}

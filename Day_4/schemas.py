@@ -28,3 +28,4 @@ class GlobalState(BaseModel):
     weather_info: Optional[str] = None
     budget_info: Optional[str] = None
     itinerary: Optional[str] = None
+    history: str

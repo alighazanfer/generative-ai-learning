@@ -30,12 +30,22 @@ if user_input:
 
     with st.spinner("Thinking..."):
         config = {"configurable": {"thread_id": st.session_state['thread_id']}}
-        
+        last_three_messages = st.session_state['message_history'][-3:]
+        history_text = "\n".join(
+            [f"{m['role']}: {m['content']}" for m in last_three_messages]
+        )
+
         if st.session_state['waiting_for_approval']:
-            state = st.session_state['graph'].invoke(Command(resume=user_input), config)
+            state = st.session_state['graph'].invoke(
+                Command(resume={"user_feedback": user_input, "history": history_text}),
+                config
+            )
             st.session_state['waiting_for_approval'] = False
         else:
-            state = st.session_state['graph'].invoke({"query": user_input}, config)
+            state = st.session_state['graph'].invoke(
+                {"query": user_input, "history": history_text},
+                config
+            )
 
         if "__interrupt__" in state:
             st.session_state['waiting_for_approval'] = True
