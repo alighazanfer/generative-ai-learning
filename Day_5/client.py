@@ -1,12 +1,12 @@
 import asyncio
 from pydantic_ai import Agent
-from pydantic_ai.mcp import MCPServerStdio
 from dotenv import load_dotenv
+from pydantic_ai.mcp import MCPServerStdio
 
 load_dotenv()
 
 server = MCPServerStdio('python', ["server.py"])
-agent = Agent('openai:gpt-4o-mini', toolsets=[server])  
+agent = Agent('openai:gpt-4o-mini', toolsets=[server])
 
 async def main():
     async with agent:  
