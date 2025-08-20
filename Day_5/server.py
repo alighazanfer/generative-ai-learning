@@ -4,7 +4,7 @@ from mcp.server.fastmcp import FastMCP
 from models import JobSummary, JobDetail
 
 
-mcp = FastMCP("MCP Server")
+mcp = FastMCP("ApplyToJobsWithHirestreamServer")
 BASE_URL = "https://cogent-labs.hirestream.io/api/v1/jobs"
 
 
