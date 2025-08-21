@@ -107,13 +107,8 @@ async def download_and_upload_resume(google_drive_url: str, job_id: int) -> None
                 return ErrorResponse(error=f"Failed to download file: {drive_response.text}")
 
             #Step 2: Upload the resume to the Hirestream API
-            uploaded_resume = {
-                "file": "resume.pdf",
-                "content_type": "application/pdf",
-                "file_content": drive_response.content
-            }
-
-            upload_response = await client.post(f"{BASE_URL}/workflows/upload/", files=uploaded_resume)
+            files = {"file": ("resume.pdf", drive_response, "application/pdf")}
+            upload_response = await client.post(f"{BASE_URL}/workflows/upload/", files=files)
             if upload_response.status_code != 200:
                 return ErrorResponse(error=f"Failed to upload resume: {upload_response.text}")
             
