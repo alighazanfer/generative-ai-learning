@@ -12,7 +12,7 @@ async def main():
     async with agent:
         message_history = []
         while True:
-            query = input("\nAsk me something (or type 'q' to exit): ")
+            query = input("\nStart applying at CogentLabs (or type 'q' to exit): ")
             if query.lower() == "q":
                 break
 
