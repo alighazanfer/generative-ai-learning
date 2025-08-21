@@ -15,8 +15,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class Job(BaseModel):
-    id: int = Field(description="Unique identifier for the job")
-    uuid: str = Field(description="Unique identifier for the job")
+    id: int = Field(description="ID of the job")
+    uuid: str = Field(description="UUID of the job")
     title: str = Field(description="Title of the job")
     department: str = Field(description="Department name of the job")
     location: str = Field(description="Location of the job")
