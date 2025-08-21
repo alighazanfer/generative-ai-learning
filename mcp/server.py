@@ -177,28 +177,28 @@ async def apply_for_job(payload: ApplyForJob, uuid: str) -> None | ErrorResponse
             logger.info(f"payload: {payload}")
             logger.info(f"Requirements: {data}")
 
-            requirements = response.json().get("requirements", [])
-            final_requirements = []
-            for req in requirements:
-                if req["type"] == "employment":
-                    work_exps = [r.dict() for r in payload.requirement_values if isinstance(r, WorkExperience)]
-                    for w in work_exps:
-                        w["requirement"] = req["id"]
-                        final_requirements.append(w)
+            # requirements = response.json().get("requirements", [])
+            # final_requirements = []
+            # for req in requirements:
+            #     if req["type"] == "employment":
+            #         work_exps = [r.dict() for r in payload.requirement_values if isinstance(r, WorkExperience)]
+            #         for w in work_exps:
+            #             w["requirement"] = req["id"]
+            #             final_requirements.append(w)
 
-                elif req["type"] == "education":
-                    educations = [r.dict() for r in payload.requirement_values if isinstance(r, Education)]
-                    for e in educations:
-                        e["requirement"] = req["id"]
-                        final_requirements.append(e)
+            #     elif req["type"] == "education":
+            #         educations = [r.dict() for r in payload.requirement_values if isinstance(r, Education)]
+            #         for e in educations:
+            #             e["requirement"] = req["id"]
+            #             final_requirements.append(e)
 
-            application_payload = payload
-            logger.info(f"Final application payload: {application_payload}")
-            application_payload["requirement_values"] = final_requirements
+            # application_payload = payload
+            # logger.info(f"Final application payload: {application_payload}")
+            # application_payload["requirement_values"] = final_requirements
 
-            response = await client.post(f"{BASE_URL}/workflows/job-applications/", json=application_payload)
-            if response.status_code != 200:
-                return ErrorResponse(error=f"Failed to apply for a job: {response.text}")
+            # response = await client.post(f"{BASE_URL}/workflows/job-applications/", json=application_payload)
+            # if response.status_code != 200:
+            #     return ErrorResponse(error=f"Failed to apply for a job: {response.text}")
             
             return None
     except Exception as e:
