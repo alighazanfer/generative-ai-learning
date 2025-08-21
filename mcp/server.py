@@ -1,7 +1,8 @@
 import re
 import httpx
 import logging
-from typing import List
+import requests
+from typing import List, Union
 from pydantic import BaseModel, Field
 from mcp.server.fastmcp import FastMCP
 from urllib.parse import urlparse, parse_qs
@@ -20,11 +21,47 @@ class Job(BaseModel):
     title: str = Field(description="Title of the job")
     department: str = Field(description="Department name of the job")
     location: str = Field(description="Location of the job")
-    # positions: int = Field(description="Number of positions available for the job")
 
 class JobDetail(Job):
     description: str = Field(description="Brief description of the job")
     organization_name: str = Field(description="Name of the organization offering the job")
+
+class WorkExperience(BaseModel):
+    requirement: int
+    employer: str
+    title: str
+    start: str
+    end: str
+
+class Education(BaseModel):
+    requirement: int
+    school: str
+    major: str
+    start: str
+    end: str
+
+class Skill(BaseModel):
+    id: int = Field(description="ID of the skill")
+    title: str = Field(description="Title of the skill")
+
+class Candidate(BaseModel):
+    first_name: str = Field(description="Candidate first name")
+    last_name: str = Field(description="Candidate last name")
+    email: str = Field(description="Candidate email")
+    phone: str = Field(description="Candidate phone number")
+    address: str = Field(description="Candidate address")
+    city: str = Field(description="Candidate city")
+    gender: str = Field(description="Candidate gender")
+    linkedin: str = Field(description="Candidate LinkedIn profile link")
+    skills: List[Skill] = Field(description="List of skills of the candidate")
+
+class ApplyForJob(BaseModel):
+    candidate: Candidate
+    job: int = Field(description="Get job id of the user requested job from the history and put it here")
+    cv: str = Field(description="URL of uploaded resume")
+    requirement_values: Union[WorkExperience, Education] = Field(description="List of work experiences and education details")
+    source_type: str = "socialmedia"
+    source_value: str = ""
 
 class ErrorResponse(BaseModel):
     error: str = Field(description="Error message")
@@ -52,7 +89,10 @@ def extract_drive_id(url: str) -> str | None:
 async def get_published_jobs() -> List[Job] | ErrorResponse:
     """
     Fetch all published jobs from Hirestream API.
-    Returns a list of job objects or an error response.
+
+    Returns:
+        List[Job]: List of job summaries if successful.
+        ErrorResponse: Error details if the request fails.
     """
 
     try:
@@ -69,12 +109,14 @@ async def get_published_jobs() -> List[Job] | ErrorResponse:
 @mcp.tool()
 async def get_published_job_detail(uuid: str) -> Job | ErrorResponse:
     """
-    Fetch published job details from the Hirestream API.
+    Fetch detailed information about a published job if required.
 
     Args:
-        uuid: The UUID of the published job to fetch.
+        uuid (str): UUID of the job to fetch.
 
-    Returns the The published job detail
+    Returns:
+        JobDetail: Detailed job info if successful.
+        ErrorResponse: Error details if the request fails.
     """
 
     try:
@@ -86,70 +128,81 @@ async def get_published_job_detail(uuid: str) -> Job | ErrorResponse:
         return ErrorResponse(error=f"Unexpected error: {str(e)}")    
 
 
-@mcp.tool()    
-async def download_and_upload_resume(google_drive_url: str, job_id: int) -> None | ErrorResponse:
+@mcp.tool()
+async def upload_resume() -> dict | ErrorResponse:
     """
-    When user asked to apply for a job, this tool will:
-    1. Download a resume from a Google Drive link.
-    2. Upload it to the Hirestream API.
+    when user ask to apply for a job, call this tool to upload a local resume to the Hirestream.
 
-    Args:
-        google_drive_url: The full Google Drive share link.
-        job_id: Get the ID of the user requested job from the get_published_job_detail, if not available in the history.
+    Returns:
+        dict: API response after uploading the resume.
+        ErrorResponse: Error details if download or upload fails.
     """
 
     try:
-        async with httpx.AsyncClient(follow_redirects=True) as client:
-            # Step 1: Download the resume from Google Drive
-            file_id = extract_drive_id(google_drive_url)
-            drive_response = await client.get(f"https://drive.google.com/uc?export=download&id={file_id}")
-            if drive_response.status_code != 200:
-                return ErrorResponse(error=f"Failed to download file: {drive_response.text}")
-
-            #Step 2: Upload the resume to the Hirestream API
-            files = {"file": ("resume.pdf", drive_response.content, "application/pdf")}
-            upload_response = await client.post(f"{BASE_URL}/workflows/upload/", files=files)
-            if upload_response.status_code != 200:
-                return ErrorResponse(error=f"Failed to upload resume: {upload_response.text}")
-            
-            upload_data = upload_response.json()
-            logger.info(f"Resume uploaded for job {job_id} successfully: {upload_data}")
-
-            #Step 3: Apply for the job application to the Hirestream API
-            apply_job_payload = {
-                "job": job_id,
-                "cv": upload_data.get("url"),
-                "candidate": {
-                    "gender": "male",
-                    "first_name": upload_data.get("first_name", "john"),
-                    "last_name": upload_data.get("last_name", "doe"),
-                    "email": upload_data.get("email", "johndoe@gmail.com"),
-                    "phone": upload_data.get("phone"),
-                    "address": upload_data.get("address"),
-                    "city": upload_data.get("city"),
-                    "skills": upload_data.get("skills", []),
-                },
-                "requirement_values": (
-                    upload_data.get("requirement_values", [])
-                    + [
-                        {"requirement": 800, "value": "34324"}, 
-                        {"requirement": 797, "value": "234234"},
-                        {"requirement": 798, "value": "2"}, 
-                        {"requirement": 799, "value": "2"},
-                    ]
-                ),
-                "source_type": "socialmedia",
-                "source_value": "",
+        resume_path = "testing_resume.pdf"
+        with open(resume_path, "rb") as f:
+            data = {"type": "cv"}
+            files = {
+                "file": (resume_path, f, "application/pdf")
             }
-
-            apply_job_response = await client.post(f"{BASE_URL}/workflows/job-applications/", json=apply_job_payload)
-            if apply_job_response.status_code != 200:
-                return ErrorResponse(error=f"Failed to apply for a job: {apply_job_response.text}")
-            
-            return None
+            response = requests.post(f"{BASE_URL}/workflows/upload/", data=data, files=files)
+            data = response.json()
+            return data
 
     except Exception as e:
         return ErrorResponse(error=f"Unexpected error: {str(e)}")
+
+
+@mcp.tool()
+async def apply_for_job(payload: ApplyForJob, uuid: str) -> None | ErrorResponse:
+    """
+    Apply for a job on Hirestream using candidate and job details.
+
+    Args:
+        payload (ApplyForJob): Pydantic model containing all application data.
+        uuid (str): UUID of the job to apply for.
+
+    Returns:
+        None: If the application succeeds.
+        ErrorResponse: Error details if the request fails.
+    """
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{BASE_URL}/jobs/{uuid}/view-job-requirements/")
+            if response.status_code != 200:
+                return ErrorResponse(error=f"Failed to apply for a job: {response.text}")
+            data = response.json()
+            
+            logger.info(f"payload: {payload}")
+            logger.info(f"Requirements: {data}")
+
+            requirements = response.json().get("requirements", [])
+            final_requirements = []
+            for req in requirements:
+                if req["type"] == "employment":
+                    work_exps = [r.dict() for r in payload.requirement_values if isinstance(r, WorkExperience)]
+                    for w in work_exps:
+                        w["requirement"] = req["id"]
+                        final_requirements.append(w)
+
+                elif req["type"] == "education":
+                    educations = [r.dict() for r in payload.requirement_values if isinstance(r, Education)]
+                    for e in educations:
+                        e["requirement"] = req["id"]
+                        final_requirements.append(e)
+
+            application_payload = payload
+            logger.info(f"Final application payload: {application_payload}")
+            application_payload["requirement_values"] = final_requirements
+
+            response = await client.post(f"{BASE_URL}/workflows/job-applications/", json=application_payload)
+            if response.status_code != 200:
+                return ErrorResponse(error=f"Failed to apply for a job: {response.text}")
+            
+            return None
+    except Exception as e:
+        return ErrorResponse(error=f"Unexpected error: {str(e)}") 
 
 
 if __name__ == '__main__':

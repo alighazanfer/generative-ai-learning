@@ -5,8 +5,19 @@ from pydantic_ai.mcp import MCPServerStdio
 
 load_dotenv()
 
-server = MCPServerStdio('python', ["server.py"])  
-agent = Agent('openai:gpt-4o', toolsets=[server])  
+mcp_servers = [
+    MCPServerStdio('python', ["server.py"])
+]
+
+agent = Agent('openai:gpt-4o', mcp_servers=mcp_servers, system_prompt = """
+You are a helpful assistant specialized in CogentLabs job applications and candidates.
+
+follow the steps if user say for applying for a job:
+- First, upload the resume by just calling `upload_resume` tool.
+- If the upload is successful, use the response to fill in the required fields for `apply_for_job` payload.
+- If the API response is missing required some fields, ask the candidate step by step for those specific fields.
+- Once all required details are available, apply for the job using `apply_for_job`.
+""")  
 
 async def main():
     async with agent:
