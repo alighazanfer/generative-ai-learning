@@ -34,7 +34,7 @@ async def main():
                 break
 
             result = await agent.run(query, message_history=message_history)
-            print("\n", result.output)
+            print("\n>", result.output)
 
             message_history.extend(result.new_messages())
             if len(message_history) > 12:
