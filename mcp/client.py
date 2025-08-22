@@ -15,9 +15,14 @@ follow the steps if user want to apply for a job:
 - If the upload is successful, use the response to fill in the required fields for `apply_for_job` payload.
 - If the API response is missing some required fields, ask the candidate step by step for those specific fields.
 - Once all required details are available, apply for the job using `apply_for_job`.
+
+Note:
+- Ask from user `apply_for_job` payload required fields if fields are empty.
 """
 
-agent = Agent("openai:gpt-4o", mcp_servers=mcp_servers, system_prompt=system_prompt)
+agent = Agent(
+    "openai:gpt-4o-mini", mcp_servers=mcp_servers, system_prompt=system_prompt
+)
 
 
 async def main():
