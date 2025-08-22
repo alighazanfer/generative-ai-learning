@@ -9,15 +9,17 @@ mcp_servers = [
     MCPServerStdio('python', ["server.py"])
 ]
 
-agent = Agent('openai:gpt-4o', mcp_servers=mcp_servers, system_prompt = """
+system_prompt = """
 You are a helpful assistant specialized in CogentLabs job applications and candidates.
 
-follow the steps if user say for applying for a job:
+follow the steps if user want to apply for a job:
 - First, upload the resume by just calling `upload_resume` tool.
 - If the upload is successful, use the response to fill in the required fields for `apply_for_job` payload.
-- If the API response is missing required some fields, ask the candidate step by step for those specific fields.
+- If the API response is missing some required fields, ask the candidate step by step for those specific fields.
 - Once all required details are available, apply for the job using `apply_for_job`.
-""")  
+"""
+
+agent = Agent('openai:gpt-4o', mcp_servers=mcp_servers, system_prompt=system_prompt)  
 
 async def main():
     async with agent:
