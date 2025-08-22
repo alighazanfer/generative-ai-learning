@@ -5,9 +5,7 @@ from pydantic_ai.mcp import MCPServerStdio
 
 load_dotenv()
 
-mcp_servers = [
-    MCPServerStdio('python', ["server.py"])
-]
+mcp_servers = [MCPServerStdio("python", ["server.py"])]
 
 system_prompt = """
 You are a helpful assistant specialized in CogentLabs job applications and candidates.
@@ -19,7 +17,8 @@ follow the steps if user want to apply for a job:
 - Once all required details are available, apply for the job using `apply_for_job`.
 """
 
-agent = Agent('openai:gpt-4o', mcp_servers=mcp_servers, system_prompt=system_prompt)  
+agent = Agent("openai:gpt-4o", mcp_servers=mcp_servers, system_prompt=system_prompt)
+
 
 async def main():
     async with agent:
@@ -36,5 +35,6 @@ async def main():
             if len(message_history) > 12:
                 message_history.pop(0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     asyncio.run(main())
