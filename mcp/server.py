@@ -67,24 +67,6 @@ class ErrorResponse(BaseModel):
     error: str = Field(description="Error message")
 
 
-def extract_drive_id(url: str) -> str | None:
-    """
-    Extract the file ID from various Google Drive URL formats.
-    Returns None if no ID found.
-    """
-
-    parsed = urlparse(url)
-    qs = parse_qs(parsed.query)
-    if "id" in qs:
-        return qs["id"][0]
-
-    match = re.search(r"/d/([a-zA-Z0-9_-]+)", url)
-    if match:
-        return match.group(1)
-
-    return None
-
-
 @mcp.tool()
 async def get_published_jobs() -> List[Job] | ErrorResponse:
     """
